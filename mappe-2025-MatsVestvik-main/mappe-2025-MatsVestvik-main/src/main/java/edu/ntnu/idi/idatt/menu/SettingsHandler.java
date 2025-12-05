@@ -1,0 +1,203 @@
+package edu.ntnu.idi.idatt.menu;
+
+import java.util.Scanner;
+import edu.ntnu.idi.idatt.objects.AuthorRegister;
+import edu.ntnu.idi.idatt.util.IntCheck;
+import edu.ntnu.idi.idatt.util.TerminalUtils;
+
+public class SettingsHandler {
+
+    /**
+     * Controlles the administration of author object.
+     * allows to change variables in the author object
+     */
+    private Scanner scanner;
+    private AuthorRegister register;
+    private LoginHandler menu;
+    public String authorName;
+
+    /**
+     * Creates the Settings object with specified paramaters.
+     * @param scanner
+     * @param register
+     * @param menu
+     */
+
+    public SettingsHandler(Scanner scanner, AuthorRegister register, LoginHandler menu) {
+        this.scanner = scanner;
+        this.register = register;
+        this.menu = menu;
+    }
+
+    /**
+     * Prompts user with options for acition. validates input to be num to be int. 
+     * @param authorName
+     * @return
+     */
+
+    public boolean settings(String authorName) {
+        this.authorName = authorName;
+        boolean inSetting = true;
+        while (inSetting) {
+            TerminalUtils.clear();
+            System.out.print("""
+                        ----------------------------------------
+                            %s's Settings
+                            1. Change Username
+                            2. Change password
+                            3. Delete account
+                            4. Back
+                        ----------------------------------------
+                        """.formatted(this.authorName));
+            System.out.println("    ");
+            int choice = IntCheck.isInt();
+            if (choice == 4) {
+                inSetting = false;
+            } else {
+                boolean accountDeleted = settingsHandler(choice);
+                if (accountDeleted) {
+                    return true; // Exit immediately if account was deleted
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * settingsHandler takes input from previous display and chooses responsible function.
+     * @param choice
+     * @return
+     */
+
+    public boolean settingsHandler(int choice) {
+        TerminalUtils.clear();
+        switch (choice) {
+            case 1 -> changeUsername();
+            case 2 -> changePassword();
+            case 3 -> {
+                if (deleteAccount()) {
+                    return true; // Account was deleted
+                }
+            }
+            default -> System.out.println("Invalid input");
+        }
+        return false;
+    }
+
+    /**
+     * prompts user for new name. validates that this is not empty
+     * validates that this is not the same name as another user.
+     */
+
+    public void changeUsername() {
+        TerminalUtils.clear();
+        System.out.println("----------------------------------------");
+        System.out.print("    New name: ");
+        // consume any leftover newline then read the new name
+        scanner.nextLine();
+        String newName = scanner.nextLine().trim();
+        String oldName = authorName;
+
+        // Loop until a valid, non-empty, and unique name is provided
+        while (true) {
+            if (newName.isEmpty()) {
+                System.out.println("    Error: Name cannot be empty!");
+            } else {
+                // Check if the name belongs to a different existing author
+                if (register.getAuthorByName(newName) != null && !newName.equals(oldName)) {
+                    System.out.println("    Error: That username is already taken by another user!");
+                } else {
+                    break; // valid name (either same as old or unique)
+                }
+            }
+
+            System.out.print("    New name: ");
+            newName = scanner.nextLine().trim();
+        }
+
+        // If name unchanged, just return to settings
+        if (newName.equals(oldName)) {
+            System.out.println("    Name unchanged.");
+            System.out.println("----------------------------------------");
+            System.out.println("    Press enter to continue...");
+            scanner.nextLine();
+            return;
+        }
+
+        // Apply the rename
+        this.authorName = newName;
+        register.getAuthorByName(oldName).setName(newName);
+        menu.setAuthorName(newName);
+
+        System.out.println("    Username changed from " + oldName + " to " + newName);
+        System.out.println("----------------------------------------");
+        System.out.println("    Press enter to continue...");
+        scanner.nextLine();
+    }
+
+    /**
+     * prompts for current pin for validation
+     * if correct allow antry of new pin
+     * ensure new pin is a valid pin
+     */
+
+    public void changePassword() {
+        TerminalUtils.clear();
+        System.out.println("----------------------------------------");
+        System.out.print("    Please enter your current pin: ");
+        int triedPin = IntCheck.isInt();
+        scanner.nextLine(); // Consume newline
+        if (register.getAuthorByName(authorName).checkPin(triedPin)) {
+            int newPin = IntCheck.validPin();
+            register.getAuthorByName(authorName).setPin(newPin);
+            System.out.println("    PIN changed successfully!");
+
+        } else {
+            System.out.println("    Incorrect current PIN!");
+        }
+
+        System.out.println("----------------------------------------");
+        System.out.println("    Press enter to continue...");
+        scanner.nextLine();
+    }
+
+    /**
+     * prompts user to input their username to ensure intent
+     * returns user to login screen if user was deleted.
+     * @return
+     */
+
+    public boolean deleteAccount() {
+        String username = "";
+        boolean inDeleteAccount = true;
+        while (inDeleteAccount) {
+            TerminalUtils.clear();
+            System.out.println("""
+                ----------------------------------------
+                    Warning you are about to delete
+                    your account %s
+                    Type your username to confirm
+                    or 'e' to go back.
+                ----------------------------------------""".formatted(authorName));
+            System.out.print("    ");
+            username = scanner.nextLine();
+            if (!username.equals("")) {
+                if (username.equals(authorName)) {
+                    register.deleteAuthor(authorName);
+                    System.out.println("Account deleted successfully!");
+                    return true;
+                } else if (username.equalsIgnoreCase("e")) {
+                    System.out.println("Account deletion cancelled.");
+                    return false;
+                } else {
+                    System.out.println("What you typed did not match your username. Type 'e' to go back.");
+                    String cancel = scanner.nextLine();
+                    if (cancel.equalsIgnoreCase("e")) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
